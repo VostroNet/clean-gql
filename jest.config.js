@@ -12,6 +12,7 @@ module.exports = {
     "!lib/**",
     "!jest.config.js",
     "!.yalc/**",
+    "!__tests__/**",
   ],
   coveragePathIgnorePatterns: ["/node_modules/"],
 

@@ -5,12 +5,12 @@ import { cleanObject } from '../src/index';
 test("clean object - basic", () => {
     const rootSchema = generateJDTFromSchema(demoSchema);
     const obj = {
-      id: "1",
-      name: "test",
+      t1i1field1: "1",
+      t1i1field2: "test",
       optional: true,
     };
-    const personType = rootSchema.definitions?.Person || {};
-    const newObj = cleanObject(obj, personType, rootSchema);
+    const testType = rootSchema.definitions?.test1Result || {};
+    const newObj = cleanObject(obj, testType, rootSchema);
     expect(newObj.optional).not.toBeDefined();
   });
   
