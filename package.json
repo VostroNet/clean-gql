@@ -1,0 +1,27 @@
+{
+  "name": "@vostro/clean-gql",
+  "version": "1.0.0",
+  "main": "lib/index.js",
+  "scripts": {
+    "watch": "tsc --watch",
+    "test": "jest"
+  },
+  "devDependencies": {
+    "@vostro/graphql-jtd": "^1.0.0",
+    "@tsconfig/node16": "^1.0.1",
+    "@tsconfig/recommended": "^1.0.1",
+    "@types/debug": "^4.1.7",
+    "@types/jest": "^27.0.3",
+    "@types/node": "^16.11.12",
+    "jest": "^27.4.4",
+    "ts-jest": "^27.1.1",
+    "typescript": "^4.5.3"
+  },
+  "dependencies": {
+    "@vostro/jtd-types": "^1.0.0",
+    "@vostro/object-visit": "^1.0.0",
+    "debug": "^4.3.3",
+    "graphql": "^16.0.1",
+    "graphql-tag": "^2.12.6"
+  }
+}
