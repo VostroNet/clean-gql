@@ -48,10 +48,20 @@ type test1Result {
   t1rfield4: Float!
   t1rfield5: testEnum1!
 }
+type obj1 {
+  t1rfield1: ID!
+}
+type obj2 {
+  t1rfield1: ID!
+  t1rfield2: obj1!
+  t1rfield3: ID!
+  t1rfield4: ID!
+}
 type Query {
   queryTest1(arg1: String!, arg2: [test1input1]): test1Result!
   queryTest2(arg1: testEnum1!, arg2: [test1input1]): test1Result
   queryTest3: test1Result
+  queryTest4: obj2
 }
 type Mutation {
   mutationTest1(arg1: String!, arg2: [test1input1]): test1Result

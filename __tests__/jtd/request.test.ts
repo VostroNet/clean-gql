@@ -1,7 +1,7 @@
 import { generateJDTFromSchema } from "@vostro/graphql-jtd";
 import gql from "graphql-tag";
-import { cleanRequest } from "../src";
-import demoSchema from "./utils/demo-schema";
+import { cleanRequest } from "../../src";
+import demoSchema from "../utils/demo-schema";
 
 test("clean request - query - basic", () => {
   const rootSchema = generateJDTFromSchema(demoSchema);
