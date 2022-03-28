@@ -182,7 +182,11 @@ export function cleanDocumentWithJTDMinMeta(query: DocumentNode, schema: IJtdMin
         // console.log("arg", {node, key, parent, fieldPath, path, ancestors, field});
         if (field?.args) {
           if (field.args[node.name.value]) {
-            variableDefinitions[node.name.value]++;
+            if((node?.value as any)?.name?.value) {
+              variableDefinitions[(node?.value as any)?.name?.value]++;
+            } else {
+              variableDefinitions[node.name.value]++;
+            }
             return node;
           }
         }
@@ -240,7 +244,7 @@ export function cleanObject(obj: any, type: IJtdMin, schema: IJtdMinRoot) {
     },
     [OKind.OBJECT]: {
       enter: ( node, key, parent, path, ancestors) => {
-        if(key) {
+        if(key && isNaN(key as any)) {
           fieldPath.push(`${key}`);
           const isValid = getFromJDTMinSchema(fieldPath, schema, false, type);
           if (isValid) {
@@ -252,7 +256,9 @@ export function cleanObject(obj: any, type: IJtdMin, schema: IJtdMinRoot) {
         
       },
       leave: ( node, key, parent, path, ancestors) => {
-        fieldPath.pop();
+        if(key && isNaN(key as any)) {
+          fieldPath.pop();
+        }
         return node;
       },
     },
@@ -280,10 +286,15 @@ export function cleanRequest(query: DocumentNode, variables: any | undefined, ro
   if (variables) {
     vars = meta.operations.reduce((v, op) => {
       Object.keys(op.variableTypes).forEach((k) => {
-        if(!v[k]) {
+        if(!v[k] && variables[k]) {
           const type = op.variableTypes[k];
           if(isJTDMinArrayType(type)) {
-            v[k] = variables[k].map((vr: any) => cleanObject(vr, type.el as IJtdMin, rootSchema));
+            const el = type.el || type;
+            if(Array.isArray(variables[k])) {
+              v[k] = variables[k].map((vr: any) => cleanObject(vr, el as IJtdMin, rootSchema));
+            } else {
+              v[k] = cleanObject(variables[k], el, rootSchema);
+            }
           } else {
             v[k] = cleanObject(variables[k], type, rootSchema);
           }
