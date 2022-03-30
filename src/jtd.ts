@@ -90,6 +90,9 @@ function getFromJDTSchema(path: string[], schema: IJtdRoot, getField = false, cu
           currentLevel = schema.definitions[prop.ref];
         }
         if (prop.elements?.type) {
+          if (isJTDScalarType(prop.elements)) {
+            return prop.elements;
+          }
           currentLevel = schema.definitions[prop.elements.type]
         }
         if (prop.elements?.ref) {
@@ -230,6 +233,12 @@ export function cleanObject(obj: any, type: IJtd, schema: IJtdRoot) {
   if(isJTDScalarType(type)) {
     return obj;
   }
+  if((type as any).enum) {
+    if ((type as any).enum.indexOf(obj) > -1) {
+      return obj;
+    }
+    return undefined;
+  }
   const newSchema = objVisit(obj, {
     [OKind.FIELD]: {
       enter: (node, key, parent, path, ancestors) => {
@@ -294,7 +303,9 @@ export function cleanRequest(query: DocumentNode, variables: any | undefined, ro
             if(isJTDArrayType(type)) {
               const el = type.elements || type;
               if(Array.isArray(variables[k])) {
-                v[k] = variables[k].map((vr: any) => cleanObject(vr, type.elements as IJtd, rootSchema));
+                v[k] = variables[k]
+                  .map((vr: any) => cleanObject(vr, type.elements as IJtd, rootSchema))
+                  .filter((vr: any) => vr !== undefined);
               } else {
 
                 v[k] = cleanObject(variables[k], el, rootSchema);

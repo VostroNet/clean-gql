@@ -87,6 +87,9 @@ function getFromJDTMinSchema(path: string[], schema: IJtdMinRoot, getField = fal
           currentLevel = schema.def[prop.ref];
         }
         if (prop.el?.t) {
+          if (isJTDScalarType(prop.el)) {
+            return prop.el;
+          }
           currentLevel = schema.def[prop.el.t]
         }
         if (prop.el?.ref) {
@@ -227,6 +230,12 @@ export function cleanObject(obj: any, type: IJtdMin, schema: IJtdMinRoot) {
   if(isJTDScalarType(type)) {
     return obj;
   }
+  if((type as any).enum) {
+    if ((type as any).enum.indexOf(obj) > -1) {
+      return obj;
+    }
+    return undefined;
+  }
   const newSchema = objVisit(obj, {
     [OKind.FIELD]: {
       enter: (node, key, parent, path, ancestors) => {
@@ -291,7 +300,9 @@ export function cleanRequest(query: DocumentNode, variables: any | undefined, ro
           if(isJTDMinArrayType(type)) {
             const el = type.el || type;
             if(Array.isArray(variables[k])) {
-              v[k] = variables[k].map((vr: any) => cleanObject(vr, el as IJtdMin, rootSchema));
+              v[k] = variables[k]
+                .map((vr: any) => cleanObject(vr, el as IJtdMin, rootSchema))
+                .filter((vr: any) => vr !== undefined);
             } else {
               v[k] = cleanObject(variables[k], el, rootSchema);
             }
