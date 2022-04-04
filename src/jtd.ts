@@ -188,10 +188,18 @@ export function cleanDocumentWithMeta(query: DocumentNode, schema: IJtdRoot) {
         // console.log("arg", {node, key, parent, fieldPath, path, ancestors, field});
         if (field?.arguments) {
           if (field.arguments[node.name.value]) {
-            if((node?.value as any)?.name?.value) {
-              variableDefinitions[(node?.value as any)?.name?.value]++;
-            } else {
-              variableDefinitions[node.name.value]++;
+            switch (node.value.kind) {
+              case Kind.OBJECT:
+                node.value.fields.forEach((objField: any) => {
+                  variableDefinitions[objField.name?.value]++;
+                });
+                break;
+              case Kind.VARIABLE:
+                variableDefinitions[node.value.name.value]++;
+                break;
+              default:
+                variableDefinitions[node.name.value]++
+                break;
             }
             return node;
           }
