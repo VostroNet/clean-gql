@@ -300,31 +300,35 @@ export function cleanObject(obj: any, type: IJtd, schema: IJtdRoot) {
   return newSchema;
 }
 
+export function cleanVariables(meta: {operations: operation[]}, rootSchema: IJtdMinRoot, variables: any) {
+  return meta.operations.reduce((v, op) => {
+    Object.keys(op.variableTypes).forEach((k) => {
+      if(!v[k] && variables[k]) {
+        const type = op.variableTypes[k];
+        if(isJTDArrayType(type)) {
+          const el = type.elements || type;
+          if(Array.isArray(variables[k])) {
+            v[k] = variables[k]
+              .map((vr: any) => cleanObject(vr, type.elements as IJtd, rootSchema))
+              .filter((vr: any) => vr !== undefined);
+          } else {
+
+            v[k] = cleanObject(variables[k], el, rootSchema);
+          }
+        } else {
+          v[k] = cleanObject(variables[k], type, rootSchema);
+        }
+      }
+    });
+    return v;
+  }, {} as any);
+}
+
 export function cleanRequest(query: DocumentNode, variables: any | undefined, rootSchema: IJtdRoot) {
     const {doc, meta} = cleanDocumentWithMeta(query, rootSchema);
     let vars: any;
     if (variables) {
-      vars = meta.operations.reduce((v, op) => {
-        Object.keys(op.variableTypes).forEach((k) => {
-          if(!v[k] && variables[k]) {
-            const type = op.variableTypes[k];
-            if(isJTDArrayType(type)) {
-              const el = type.elements || type;
-              if(Array.isArray(variables[k])) {
-                v[k] = variables[k]
-                  .map((vr: any) => cleanObject(vr, type.elements as IJtd, rootSchema))
-                  .filter((vr: any) => vr !== undefined);
-              } else {
-
-                v[k] = cleanObject(variables[k], el, rootSchema);
-              }
-            } else {
-              v[k] = cleanObject(variables[k], type, rootSchema);
-            }
-          }
-        });
-        return v;
-      }, {} as any)
+      vars = cleanVariables(meta, rootSchema, variables);
     }
   
     return {
