@@ -1,6 +1,6 @@
 {
   "name": "@vostro/clean-gql",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "main": "lib/index.js",
   "scripts": {
     "prepublishOnly": "(rm -Rf ./lib || true) && tsc --build && tsc --declaration --declarationMap && (yalc remove --all || true)",

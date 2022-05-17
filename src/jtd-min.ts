@@ -22,6 +22,7 @@ export function isJTDScalarType(typeDef: IJtdMin) {
     case JtdMinType.UINT16:
     case JtdMinType.UINT32:
     case JtdMinType.UINT8:
+    case JtdMinType.UNKNOWN:
       return true;
   }
   return false;
@@ -57,8 +58,9 @@ function getJDTMinTypeFromTypeNode(typeNode: TypeNode, schema: IJtdMinRoot) : IJ
     typeDef = schema.def[typeName];
   }
   if(!typeDef) {
-    logger.err(`no type found for ${typeName}`);
-    throw `no type found for ${typeName}`;
+    typeDef = { t: JtdMinType.UNKNOWN };
+    // logger.err(`no type found for ${typeName}`);
+    // throw `no type found for ${typeName}`;
   }
   if(isList) {
     typeDef = {el: typeDef};
@@ -212,6 +214,7 @@ export function cleanDocumentWithJTDMinMeta(query: DocumentNode, schema: IJtdMin
         if (isValid) {
           return node;
         }
+        fieldPath.pop();
         return null;
       },
       leave: (node, key, parent, path, ancestors) => {

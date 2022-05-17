@@ -21,6 +21,7 @@ export function isJTDScalarType(typeDef: IJtd) {
     case JtdType.UINT16:
     case JtdType.UINT32:
     case JtdType.UINT8:
+    case JtdType.UNKNOWN:
       return true;
   }
   return false;
@@ -56,8 +57,7 @@ function getJDTTypeFromTypeNode(typeNode: TypeNode, schema: IJtdRoot) : IJtd {
     typeDef = schema.definitions[typeName];
   }
   if(!typeDef) {
-    logger.err(`no type found for ${typeName}`);
-    throw `no type found for ${typeName}`;
+    typeDef = { type: JtdType.UNKNOWN };
   }
   if(isList) {
     typeDef = {elements: typeDef};
@@ -215,6 +215,7 @@ export function cleanDocumentWithMeta(query: DocumentNode, schema: IJtdRoot) {
         if (isValid) {
           return node;
         }
+        fieldPath.pop();
         return null;
       },
       leave: (node, key, parent, path, ancestors) => {
@@ -325,14 +326,14 @@ export function cleanVariables(meta: {operations: operation[]}, rootSchema: IJtd
 }
 
 export function cleanRequest(query: DocumentNode, variables: any | undefined, rootSchema: IJtdRoot) {
-    const {doc, meta} = cleanDocumentWithMeta(query, rootSchema);
-    let vars: any;
-    if (variables) {
-      vars = cleanVariables(meta, rootSchema, variables);
-    }
-  
-    return {
-      query: doc,
-      variables: vars,
-    };
+  const {doc, meta} = cleanDocumentWithMeta(query, rootSchema);
+  let vars: any;
+  if (variables) {
+    vars = cleanVariables(meta, rootSchema, variables);
   }
+
+  return {
+    query: doc,
+    variables: vars,
+  };
+}
