@@ -1,15 +1,21 @@
-import {visit, Kind, DocumentNode, OperationDefinitionNode, NamedTypeNode, TypeNode} from "graphql";
-import { IJtd, IJtdRoot, JtdType, IJtdMinRoot } from '@vostro/jtd-types';
+import {
+  visit,
+  Kind,
+  DocumentNode,
+  OperationDefinitionNode,
+  NamedTypeNode,
+  TypeNode,
+} from "graphql";
+import { IJtd, IJtdRoot, JtdType, IJtdMinRoot } from "@vostro/jtd-types";
 import { OKind, objVisit } from "@vostro/object-visit";
-
-import logger from "./utils/logger";
+import { extractVariables } from "./shared";
 
 export function isJTDArrayType(typedef: IJtd) {
   return !!typedef.elements;
 }
 
 export function isJTDScalarType(typeDef: IJtd) {
-  switch(typeDef.type) {
+  switch (typeDef.type) {
     case JtdType.BOOLEAN:
     case JtdType.FLOAT32:
     case JtdType.FLOAT64:
@@ -27,7 +33,7 @@ export function isJTDScalarType(typeDef: IJtd) {
   return false;
 }
 
-function getJDTTypeFromTypeNode(typeNode: TypeNode, schema: IJtdRoot) : IJtd {
+function getJDTTypeFromTypeNode(typeNode: TypeNode, schema: IJtdRoot): IJtd {
   let type = typeNode;
   let isNonNull = false;
   let isList = false;
@@ -53,72 +59,81 @@ function getJDTTypeFromTypeNode(typeNode: TypeNode, schema: IJtdRoot) : IJtd {
       typeDef = { type: JtdType.FLOAT32 };
       break;
   }
-  if(!typeDef && schema.definitions && schema.definitions[typeName]) {
+  if (!typeDef && schema.definitions && schema.definitions[typeName]) {
     typeDef = schema.definitions[typeName];
   }
-  if(!typeDef) {
+  if (!typeDef) {
     typeDef = { type: JtdType.UNKNOWN };
   }
-  if(isList) {
-    typeDef = {elements: typeDef};
+  if (isList) {
+    typeDef = { elements: typeDef };
   }
-  if(isNonNull) {
+  if (isNonNull) {
     typeDef.nullable = false;
   } else {
     typeDef.nullable = true;
   }
-  return typeDef
+  return typeDef;
 }
 
-function getFromJDTSchema(path: string[], schema: IJtdRoot, getField = false, currentLevel: IJtd | undefined = schema) {
+function getFromJDTSchema(
+  path: string[],
+  schema: IJtdRoot,
+  getField = false,
+  currentLevel: IJtd | undefined = schema
+) {
   let p = path;
 
   let prop;
-  for(let x = 0; x < p.length; x++) {
+  for (let x = 0; x < p.length; x++) {
     prop = undefined;
     const currentPos = p[x];
-    if(currentLevel.properties && currentLevel.properties[currentPos]) {
+    if (currentLevel.properties && currentLevel.properties[currentPos]) {
       prop = currentLevel.properties[currentPos];
-    } else if(currentLevel.optionalProperties && currentLevel.optionalProperties[currentPos]) {
+    } else if (
+      currentLevel.optionalProperties &&
+      currentLevel.optionalProperties[currentPos]
+    ) {
       prop = currentLevel.optionalProperties[currentPos];
     }
     if (prop) {
-      if(prop.properties || prop.optionalProperties) {
+      if (prop.properties || prop.optionalProperties) {
         currentLevel = prop;
-      } else if(schema.definitions) {
-        if(prop.ref) {
+      } else if (schema.definitions) {
+        if (prop.ref) {
           currentLevel = schema.definitions[prop.ref];
         }
         if (prop.elements?.type) {
           if (isJTDScalarType(prop.elements)) {
             return prop.elements;
           }
-          currentLevel = schema.definitions[prop.elements.type]
+          currentLevel = schema.definitions[prop.elements.type];
         }
         if (prop.elements?.ref) {
-          currentLevel = schema.definitions[prop.elements.ref]
+          currentLevel = schema.definitions[prop.elements.ref];
+        }
+        if (isJTDScalarType(prop)) {
+          return prop;
         }
       }
     } else {
       return undefined;
     }
   }
-  if(prop?.ref && schema.definitions && !getField) {
+  if (prop?.ref && schema.definitions && !getField) {
     return schema.definitions[prop.ref];
   }
   return prop;
 }
-
 
 export function cleanDocument(query: DocumentNode, schema: IJtdRoot) {
   return cleanDocumentWithMeta(query, schema).doc;
 }
 
 interface operation {
-  name?: string
-  variableTypes: {[key: string]: IJtd}
+  name?: string;
+  variableTypes: { [key: string]: IJtd };
 }
-
 
 export function cleanDocumentWithMeta(query: DocumentNode, schema: IJtdRoot) {
   let fieldPath = [] as string[];
@@ -133,7 +148,7 @@ export function cleanDocumentWithMeta(query: DocumentNode, schema: IJtdRoot) {
             variableDefinitions[vd.variable.name.value] = 0;
           });
         }
-        if(def.operation === "query") {
+        if (def.operation === "query") {
           fieldPath.push((schema.metadata as any).query);
         } else {
           fieldPath.push((schema.metadata as any).mutation);
@@ -150,37 +165,23 @@ export function cleanDocumentWithMeta(query: DocumentNode, schema: IJtdRoot) {
           } as OperationDefinitionNode;
           operations.push({
             name: val.name?.value,
-            variableTypes: (val.variableDefinitions || []).reduce((o, varDef) => {
-              o[varDef.variable.name.value] = getJDTTypeFromTypeNode(varDef.type, schema);
-              return o;
-            }, {} as {[key: string]: IJtd}),
+            variableTypes: (val.variableDefinitions || []).reduce(
+              (o, varDef) => {
+                o[varDef.variable.name.value] = getJDTTypeFromTypeNode(
+                  varDef.type,
+                  schema
+                );
+                return o;
+              },
+              {} as { [key: string]: IJtd }
+            ),
           });
           variableDefinitions = {}; //Reset for the next def
           return val;
         }
         return undefined;
-      }
+      },
     },
-    // [Kind.OBJECT]: {
-    //   leave: (node, key, parent, path, ancestors) => {
-    //     fieldPath.pop();
-    //   }
-    // },
-    // [Kind.OBJECT_FIELD]: {
-    //   leave: (node, key, parent, path, ancestors) => {
-    //     fieldPath.pop();
-    //   }
-    // },
-    // [Kind.FIELD_DEFINITION]: {
-    //   leave: (node, key, parent, path, ancestors) => {
-    //     fieldPath.pop();
-    //   }
-    // },
-    // [Kind.SELECTION_SET]: {
-    //   leave: (node, key, parent, path, ancestors) => {
-    //     fieldPath.pop();
-    //   }
-    // },
 
     [Kind.ARGUMENT]: {
       enter: (node, key, parent, path, ancestors) => {
@@ -190,15 +191,16 @@ export function cleanDocumentWithMeta(query: DocumentNode, schema: IJtdRoot) {
           if (field.arguments[node.name.value]) {
             switch (node.value.kind) {
               case Kind.OBJECT:
-                node.value.fields.forEach((objField: any) => {
-                  variableDefinitions[objField.name?.value]++;
+                const vars = extractVariables(node.value.fields);
+                vars.forEach((varObj) => {
+                  variableDefinitions[varObj.name.value]++;
                 });
                 break;
               case Kind.VARIABLE:
                 variableDefinitions[node.value.name.value]++;
                 break;
               default:
-                variableDefinitions[node.name.value]++
+                variableDefinitions[node.name.value]++;
                 break;
             }
             return node;
@@ -206,12 +208,13 @@ export function cleanDocumentWithMeta(query: DocumentNode, schema: IJtdRoot) {
         }
         return null;
       },
-      
     },
-    [Kind.FIELD]:  {
+    [Kind.FIELD]: {
       enter: (node, key, parent, path, ancestors) => {
         fieldPath.push(node.name.value);
-        const isValid = node.name.value.indexOf("__") === 0 || getFromJDTSchema(fieldPath, schema);
+        const isValid =
+          node.name.value.indexOf("__") === 0 ||
+          getFromJDTSchema(fieldPath, schema);
         if (isValid) {
           return node;
         }
@@ -228,21 +231,20 @@ export function cleanDocumentWithMeta(query: DocumentNode, schema: IJtdRoot) {
             }
           }
         }
-        return undefined
-      }
-    }
+        return undefined;
+      },
+    },
   });
 
-  return {doc: newSchema, meta: {operations}};
+  return { doc: newSchema, meta: { operations } };
 }
-
 
 export function cleanObject(obj: any, type: IJtd, schema: IJtdRoot) {
   let fieldPath = [] as string[];
-  if(isJTDScalarType(type)) {
+  if (isJTDScalarType(type)) {
     return obj;
   }
-  if((type as any).enum) {
+  if ((type as any).enum) {
     if ((type as any).enum.indexOf(obj) > -1) {
       return obj;
     }
@@ -258,33 +260,32 @@ export function cleanObject(obj: any, type: IJtd, schema: IJtdRoot) {
         }
         return undefined;
       },
-      leave: ( node, key, parent, path, ancestors) => {
+      leave: (node, key, parent, path, ancestors) => {
         fieldPath.pop();
         return node;
       },
     },
     [OKind.OBJECT]: {
-      enter: ( node, key, parent, path, ancestors) => {
-        if(key && isNaN(key as any)) {
+      enter: (node, key, parent, path, ancestors) => {
+        if (key && isNaN(key as any)) {
           fieldPath.push(`${key}`);
           const isValid = getFromJDTSchema(fieldPath, schema, false, type);
           if (isValid) {
             return node;
           }
           return undefined;
-        } 
+        }
         return node;
-        
       },
-      leave: ( node, key, parent, path, ancestors) => {
-        if(key && isNaN(key as any)) {
+      leave: (node, key, parent, path, ancestors) => {
+        if (key && isNaN(key as any)) {
           fieldPath.pop();
         }
         return node;
       },
     },
     [OKind.ARRAY]: {
-      enter: ( node, key, parent, path, ancestors) => {
+      enter: (node, key, parent, path, ancestors) => {
         fieldPath.push(`${key}`);
         const isValid = getFromJDTSchema(fieldPath, schema, false, type);
         if (isValid) {
@@ -292,7 +293,7 @@ export function cleanObject(obj: any, type: IJtd, schema: IJtdRoot) {
         }
         return undefined;
       },
-      leave: ( node, key, parent, path, ancestors) => {
+      leave: (node, key, parent, path, ancestors) => {
         fieldPath.pop();
         return node;
       },
@@ -301,19 +302,24 @@ export function cleanObject(obj: any, type: IJtd, schema: IJtdRoot) {
   return newSchema;
 }
 
-export function cleanVariables(meta: {operations: operation[]}, rootSchema: IJtdMinRoot, variables: any) {
+export function cleanVariables(
+  meta: { operations: operation[] },
+  rootSchema: IJtdMinRoot,
+  variables: any
+) {
   return meta.operations.reduce((v, op) => {
     Object.keys(op.variableTypes).forEach((k) => {
-      if(!v[k] && variables[k]) {
+      if (!v[k] && variables[k]) {
         const type = op.variableTypes[k];
-        if(isJTDArrayType(type)) {
+        if (isJTDArrayType(type)) {
           const el = type.elements || type;
-          if(Array.isArray(variables[k])) {
+          if (Array.isArray(variables[k])) {
             v[k] = variables[k]
-              .map((vr: any) => cleanObject(vr, type.elements as IJtd, rootSchema))
+              .map((vr: any) =>
+                cleanObject(vr, type.elements as IJtd, rootSchema)
+              )
               .filter((vr: any) => vr !== undefined);
           } else {
-
             v[k] = cleanObject(variables[k], el, rootSchema);
           }
         } else {
@@ -325,8 +331,12 @@ export function cleanVariables(meta: {operations: operation[]}, rootSchema: IJtd
   }, {} as any);
 }
 
-export function cleanRequest(query: DocumentNode, variables: any | undefined, rootSchema: IJtdRoot) {
-  const {doc, meta} = cleanDocumentWithMeta(query, rootSchema);
+export function cleanRequest(
+  query: DocumentNode,
+  variables: any | undefined,
+  rootSchema: IJtdRoot
+) {
+  const { doc, meta } = cleanDocumentWithMeta(query, rootSchema);
   let vars: any;
   if (variables) {
     vars = cleanVariables(meta, rootSchema, variables);

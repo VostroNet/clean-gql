@@ -1,5 +1,5 @@
 import { buildSchema } from "graphql";
-
+import jsonType from "@vostro/graphql-types/lib/json";
 // export default buildSchema(`
 // enum Episode {
 //   NEWHOPE
@@ -29,10 +29,16 @@ import { buildSchema } from "graphql";
 // }
 // `);
 
-export default buildSchema(`enum testEnum1 {
+export default buildSchema(`
+scalar GQLTJson
+enum testEnum1 {
   option1
   option2
   option3
+}
+input test1input1obj {
+  t1i1complx: String
+  t1i2complx: GQLTJson
 }
 input test1input1 {
   t1i1field1: ID
@@ -40,6 +46,7 @@ input test1input1 {
   t1i1field3: Int
   t1i1field4: Float
   t1i1field5: testEnum1
+  t1i1field6: test1input1obj
 }
 type test1Result {
   t1rfield1: ID!

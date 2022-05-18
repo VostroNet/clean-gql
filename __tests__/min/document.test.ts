@@ -103,6 +103,41 @@ test("clean document with meta - basic arguments", () => {
 
 
 
+test("clean document with meta - complex arguments", () => {
+  const rootSchema = generateJDTMinFromSchema(demoSchema);
+  const query = gql`query testQuery($inner: String!) {
+    req: queryTest1(arg2: {
+      t1i1field6: {
+        t1i1complx: $inner 
+      }
+    }) {
+      t1rfield1
+    }
+  }`;
+
+  const {doc, meta} = cleanDocumentWithJTDMinMeta(query, rootSchema);
+  // logger.log("newQuery",  newQuery);
+  expect(doc.definitions).toHaveLength(1);
+  const operation = doc.definitions[0] as OperationDefinitionNode;
+  expect(operation.selectionSet.selections).toHaveLength(1);
+  expect(operation.variableDefinitions).toHaveLength(1);
+  const variableDef1 = (operation.variableDefinitions || [])[0];
+  expect(variableDef1?.variable.name.value).toBe("inner")
+
+  expect(meta.operations).toBeDefined();
+  expect(meta.operations).toHaveLength(1);
+  const op = meta.operations[0];
+  expect(op.name).toEqual("testQuery");
+  expect(op.variableTypes).toBeDefined();
+  const argKeys = Object.keys(op.variableTypes);
+  expect(argKeys).toHaveLength(1);
+  expect(op.variableTypes.inner).toBeDefined();
+  expect(op.variableTypes.inner.t === JtdMinType.STRING);
+});
+
+
+
+
 // test("clean document with meta - basic arguments", () => {
 //   const rootSchema = generateJDTFromSchema(demoSchema);
 //   const query = gql`query testQuery($arg1: String!, $optional: String, $arg2: [test1input1]!) {
