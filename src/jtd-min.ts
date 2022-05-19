@@ -40,6 +40,7 @@ function getJDTMinTypeFromTypeNode(
   let type = typeNode;
   let isNonNull = false;
   let isList = false;
+
   if (type.kind === Kind.NON_NULL_TYPE) {
     type = type.type;
     isNonNull = true;
@@ -47,6 +48,11 @@ function getJDTMinTypeFromTypeNode(
   if (type.kind === Kind.LIST_TYPE) {
     type = type.type;
     isList = true;
+  }
+  // lists can contain non null types
+  if (type.kind === Kind.NON_NULL_TYPE) {
+    type = type.type;
+    isNonNull = true;
   }
   let typeDef;
   const typeName = (type as NamedTypeNode).name.value;

@@ -69,6 +69,7 @@ type Query {
   queryTest2(arg1: testEnum1!, arg2: [test1input1]): test1Result
   queryTest3: test1Result
   queryTest4: obj2
+  queryTest5: [obj2!]!
 }
 type Mutation {
   mutationTest1(arg1: String!, arg2: [test1input1]): test1Result

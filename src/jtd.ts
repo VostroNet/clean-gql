@@ -45,6 +45,10 @@ function getJDTTypeFromTypeNode(typeNode: TypeNode, schema: IJtdRoot): IJtd {
     type = type.type;
     isList = true;
   }
+  if (type.kind === Kind.NON_NULL_TYPE) {
+    type = type.type;
+    isNonNull = true;
+  }
   let typeDef;
   const typeName = (type as NamedTypeNode).name.value;
   switch (typeName) {
