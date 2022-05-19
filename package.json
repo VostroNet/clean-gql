@@ -1,6 +1,6 @@
 {
   "name": "@vostro/clean-gql",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "main": "lib/index.js",
   "scripts": {
     "prepublishOnly": "(rm -Rf ./lib || true) && tsc --build && tsc --declaration --declarationMap && (yalc remove --all || true)",
@@ -11,23 +11,23 @@
     "@tsconfig/node16": "^1.0.2",
     "@tsconfig/recommended": "^1.0.1",
     "@types/debug": "^4.1.7",
-    "@types/jest": "^27.4.1",
-    "@types/node": "^17.0.23",
+    "@types/jest": "^27.5.1",
+    "@types/node": "^17.0.34",
     "@vostro/graphql-jtd": "^1.0.4",
     "@vostro/graphql-types": "^2.0.0",
     "@vostro/jtd-types": "^1.0.2",
-    "graphql": "^16.3.0",
+    "graphql": "^16.5.0",
     "graphql-tag": "^2.12.6",
-    "jest": "^27.5.1",
-    "ts-jest": "^27.1.4",
-    "typescript": "^4.6.3"
+    "jest": "^28.1.0",
+    "ts-jest": "^28.0.2",
+    "typescript": "^4.6.4"
   },
   "peerDependencies": {
     "@vostro/jtd-types": "^1.0.2",
     "graphql": "^16.0.1"
   },
   "dependencies": {
-    "@vostro/object-visit": "^1.0.0",
+    "@vostro/object-visit": "^1.0.1",
     "debug": "^4.3.4"
   }
 }
