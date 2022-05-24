@@ -48,6 +48,10 @@ input test1input1 {
   t1i1field5: testEnum1
   t1i1field6: test1input1obj
 }
+input test2input1 {
+  t2i1f1: Boolean!
+  t2i1f2: String!
+}
 type test1Result {
   t1rfield1: ID!
   t1rfield2: String!
@@ -70,6 +74,7 @@ type Query {
   queryTest3: test1Result
   queryTest4: obj2
   queryTest5: [obj2!]!
+  queryTest6(arg1: test2input1!) : obj1
 }
 type Mutation {
   mutationTest1(arg1: String!, arg2: [test1input1]): test1Result

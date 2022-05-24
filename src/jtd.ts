@@ -313,7 +313,7 @@ export function cleanVariables(
 ) {
   return meta.operations.reduce((v, op) => {
     Object.keys(op.variableTypes).forEach((k) => {
-      if (!v[k] && variables[k]) {
+      if (!v[k] && variables[k] !== undefined) {
         const type = op.variableTypes[k];
         if (isJTDArrayType(type)) {
           const el = type.elements || type;

@@ -41,6 +41,33 @@ test("clean request - query - basic", () => {
 
 
 
+test("clean request - query - do not filter false from args", () => {
+  const rootSchema = generateJDTMinFromSchema(demoSchema);
+  const query = gql`query testQuery($arg2: Boolean) {
+    queryTest6(arg1: {
+      t2i1f1: $arg2
+      t2i1f2: "Check2"
+    }) {
+      t1rfield1
+    }
+  }`;
+
+  const variables = {
+    arg2: false,
+    optional: "defined"
+  };
+
+
+  const newRequest = cleanRequest(query, variables, rootSchema);
+
+  expect(newRequest.query).toBeDefined();
+  expect(newRequest.variables).toBeDefined();
+  expect(newRequest.variables?.optional).not.toBeDefined();
+  expect(newRequest.variables?.arg2).toBeDefined();
+  expect(newRequest.variables?.arg2).toBe(false);
+});
+
+
 // test("clean request - query - complex arguments", () => {
 //   const rootSchema = generateJDTFromSchema(demoSchema);
 //   const query = gql`
