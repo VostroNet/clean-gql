@@ -193,20 +193,10 @@ export function cleanDocumentWithMeta(query: DocumentNode, schema: IJtdRoot) {
         // console.log("arg", {node, key, parent, fieldPath, path, ancestors, field});
         if (field?.arguments) {
           if (field.arguments[node.name.value]) {
-            switch (node.value.kind) {
-              case Kind.OBJECT:
-                const vars = extractVariables(node.value.fields);
-                vars.forEach((varObj) => {
-                  variableDefinitions[varObj.name.value]++;
-                });
-                break;
-              case Kind.VARIABLE:
-                variableDefinitions[node.value.name.value]++;
-                break;
-              default:
-                variableDefinitions[node.name.value]++;
-                break;
-            }
+            const vars = extractVariables(node);
+            vars.forEach((varObj) => {
+              variableDefinitions[varObj.name.value]++;
+            });
             return node;
           }
         }

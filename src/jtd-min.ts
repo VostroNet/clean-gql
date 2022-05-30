@@ -199,20 +199,10 @@ export function cleanDocumentWithJTDMinMeta(
 
         if (field?.args) {
           if (field.args[node.name.value]) {
-            switch (node.value.kind) {
-              case Kind.OBJECT:
-                const vars = extractVariables(node.value.fields);
-                vars.forEach((varObj) => {
-                  variableDefinitions[varObj.name.value]++;
-                });
-                break;
-              case Kind.VARIABLE:
-                variableDefinitions[node.value.name.value]++;
-                break;
-              default:
-                variableDefinitions[node.name.value]++;
-                break;
-            }
+            const vars = extractVariables(node);
+            vars.forEach((varName) => {
+              variableDefinitions[varName]++;
+            });
             return node;
           }
         }
