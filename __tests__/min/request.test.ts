@@ -2,6 +2,7 @@ import { generateJDTMinFromSchema } from "@vostro/graphql-jtd";
 import gql from "graphql-tag";
 import { cleanRequest } from "../../src/jtd-min";
 import demoSchema from "../utils/demo-schema";
+import { OperationDefinitionNode, SelectionSetNode, FieldNode, ListValueNode, ObjectValueNode, ObjectFieldNode, ValueNode } from 'graphql';
 
 test("clean request - query - basic", () => {
   const rootSchema = generateJDTMinFromSchema(demoSchema);
@@ -68,6 +69,58 @@ test("clean request - query - do not filter false from args", () => {
 });
 
 
+test("clean request - query - test complicated arguments", async() => {
+  const rootSchema = generateJDTMinFromSchema(demoSchema);
+  const query = gql`query testQuery($arg2: Boolean) {
+    queryTest1(arg1: "Howdy", arg2: [{t1i1field6: {t1i1complx: "test", filtered: true}}]) {
+      t1rfield1
+    }
+  }`;
+
+
+  const newRequest = cleanRequest(query, {}, rootSchema);
+  expect(newRequest.query).toBeDefined();
+  const opDefNode = newRequest.query.definitions[0] as OperationDefinitionNode;
+  const selNode = opDefNode.selectionSet.selections[0] as FieldNode;
+  if (selNode.arguments) {
+    const argNode = ((selNode.arguments[1].value as ListValueNode).values[0] as ObjectValueNode).fields[0];
+    const filteredNode = (argNode as any).value.fields;
+    expect(filteredNode).toHaveLength(1)
+    expect(argNode.name.value).toBe("t1i1field6");
+  } else {
+    expect(false).toBe(true);
+  }
+
+});
+
+test("clean request - query - test parameterised argument objects", async() => {
+  const rootSchema = generateJDTMinFromSchema(demoSchema);
+  const query = gql`query testQuery($arg2: Boolean, $optional: String) {
+    queryTest1(arg1: "Howdy", arg2: [{t1i1field6: {t1i1complx: "test", filtered: true, optional: $optional}}]) {
+      t1rfield1
+    }
+  }`;
+
+
+  const newRequest = cleanRequest(query, {
+    arg2: false,
+    optional: "defined"
+  }, rootSchema);
+  expect(newRequest.query).toBeDefined();
+  expect(newRequest.variables).toBeDefined();
+  expect(newRequest.variables?.optional).not.toBeDefined();
+  const opDefNode = newRequest.query.definitions[0] as OperationDefinitionNode;
+  const selNode = opDefNode.selectionSet.selections[0] as FieldNode;
+  if (selNode.arguments) {
+    const argNode = ((selNode.arguments[1].value as ListValueNode).values[0] as ObjectValueNode).fields[0];
+    const filteredNode = (argNode as any).value.fields;
+    expect(filteredNode).toHaveLength(1)
+    expect(argNode.name.value).toBe("t1i1field6");
+  } else {
+    expect(false).toBe(true);
+  }
+
+});
 // test("clean request - query - complex arguments", () => {
 //   const rootSchema = generateJDTFromSchema(demoSchema);
 //   const query = gql`

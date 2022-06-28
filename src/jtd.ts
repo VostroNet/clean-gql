@@ -5,6 +5,7 @@ import {
   OperationDefinitionNode,
   NamedTypeNode,
   TypeNode,
+  VariableNode,
 } from "graphql";
 import { IJtd, IJtdRoot, JtdType, IJtdMinRoot } from "@vostro/jtd-types";
 import { OKind, objVisit } from "@vostro/object-visit";
@@ -87,19 +88,29 @@ function getFromJDTSchema(
   currentLevel: IJtd | undefined = schema
 ) {
   let p = path;
-
+  let prevProp;
   let prop;
   for (let x = 0; x < p.length; x++) {
     prop = undefined;
-    const currentPos = p[x];
-    if (currentLevel.properties && currentLevel.properties[currentPos]) {
-      prop = currentLevel.properties[currentPos];
-    } else if (
-      currentLevel.optionalProperties &&
-      currentLevel.optionalProperties[currentPos]
-    ) {
-      prop = currentLevel.optionalProperties[currentPos];
+    const argCheck = p[x].match(/\[(.*?)\]/);
+    if (argCheck) {
+      const arg = argCheck[1];
+      if (prevProp?.arguments && prevProp?.arguments[arg]) {
+        prop = prevProp.arguments[arg];
+      }
+    } else {
+      const currentPos = p[x];
+      if (currentLevel?.properties && currentLevel.properties[currentPos]) {
+        prop = currentLevel.properties[currentPos];
+      } else if (
+        currentLevel?.optionalProperties &&
+        currentLevel?.optionalProperties[currentPos]
+      ) {
+        prop = currentLevel.optionalProperties[currentPos];
+      }
     }
+
+    
     if (prop) {
       if (prop.properties || prop.optionalProperties) {
         currentLevel = prop;
@@ -123,6 +134,7 @@ function getFromJDTSchema(
     } else {
       return undefined;
     }
+    prevProp = prop;
   }
   if (prop?.ref && schema.definitions && !getField) {
     return schema.definitions[prop.ref];
@@ -141,6 +153,7 @@ interface operation {
 
 export function cleanDocumentWithMeta(query: DocumentNode, schema: IJtdRoot) {
   let fieldPath = [] as string[];
+  let insideArg = false;
   let variableDefinitions = {} as any;
   let operations = [] as operation[];
   // let currentOperation;
@@ -190,18 +203,51 @@ export function cleanDocumentWithMeta(query: DocumentNode, schema: IJtdRoot) {
     [Kind.ARGUMENT]: {
       enter: (node, key, parent, path, ancestors) => {
         const field = getFromJDTSchema(fieldPath, schema, true);
-        // console.log("arg", {node, key, parent, fieldPath, path, ancestors, field});
+        insideArg = true;
+        fieldPath.push(`[${node.name.value}]`);
         if (field?.arguments) {
           if (field.arguments[node.name.value]) {
             const vars = extractVariables(node);
-            vars.forEach((varObj) => {
-              variableDefinitions[varObj.name.value]++;
+            vars.forEach((varName) => {
+              variableDefinitions[varName]++;
             });
             return node;
           }
         }
+
+        insideArg = false;
+        fieldPath.pop();
         return null;
       },
+      leave: (node, key, parent, path, ancestors) => {
+        fieldPath.pop();
+        insideArg = false;
+        return undefined;
+      }
+    },
+    [Kind.OBJECT_FIELD]: {
+      enter: (node, key, parent, path, ancestors) => {
+        if (insideArg) {
+          fieldPath.push(node.name.value);
+          const isValid =
+            node.name.value.indexOf("__") === 0 ||
+            getFromJDTSchema(fieldPath, schema);
+          if (isValid) {
+            return node;
+          }
+          if (node.value.kind === Kind.VARIABLE) {
+            variableDefinitions[(node.value as VariableNode).name.value]--;
+          }
+          fieldPath.pop();
+          return null;
+        }
+      },
+      leave: (node, key, parent, path, ancestors) => {
+        if (insideArg) {
+          fieldPath.pop();
+        }
+        return undefined;
+      }
     },
     [Kind.FIELD]: {
       enter: (node, key, parent, path, ancestors) => {

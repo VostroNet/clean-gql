@@ -5,6 +5,7 @@ import {
   OperationDefinitionNode,
   NamedTypeNode,
   TypeNode,
+  VariableNode,
 } from "graphql";
 import { IJtdMin, IJtdMinRoot, JtdMinType } from "@vostro/jtd-types";
 import { OKind, objVisit } from "@vostro/object-visit";
@@ -92,13 +93,23 @@ function getFromJDTMinSchema(
   currentLevel: IJtdMin | undefined = schema
 ) {
   let p = path;
-
+  let prevProp;
   let prop;
   for (let x = 0; x < p.length; x++) {
+
     prop = undefined;
-    const currentPos = p[x];
-    if (currentLevel?.p && currentLevel?.p[currentPos]) {
-      prop = currentLevel?.p[currentPos];
+
+    const argCheck = p[x].match(/\[(.*?)\]/);
+    if (argCheck) {
+      const arg = argCheck[1];
+      if (prevProp?.args && prevProp?.args[arg]) {
+        prop = prevProp.args[arg];
+      }
+    } else {
+      const currentPos = p[x];
+      if (currentLevel?.p && currentLevel?.p[currentPos]) {
+        prop = currentLevel?.p[currentPos];
+      }
     }
     if (prop) {
       if (prop.p) {
@@ -107,6 +118,7 @@ function getFromJDTMinSchema(
         if (prop.ref) {
           currentLevel = schema.def[prop.ref];
         }
+        
         if (prop.el?.t) {
           if (isJTDScalarType(prop.el)) {
             return prop.el;
@@ -123,6 +135,7 @@ function getFromJDTMinSchema(
     } else {
       return undefined;
     }
+    prevProp = prop;
   }
   if (prop?.ref && schema.def && !getField) {
     return schema.def[prop.ref];
@@ -147,6 +160,7 @@ export function cleanDocumentWithJTDMinMeta(
   schema: IJtdMinRoot
 ) {
   let fieldPath = [] as string[];
+  let insideArg = false;
   let variableDefinitions = {} as any;
   let operations = [] as operation[];
   // let currentOperation;
@@ -195,8 +209,8 @@ export function cleanDocumentWithJTDMinMeta(
     [Kind.ARGUMENT]: {
       enter: (node, key, parent, path, ancestors) => {
         const field = getFromJDTMinSchema(fieldPath, schema, true);
-        // console.log("arg", {node, key, parent, fieldPath, path, ancestors, field});
-
+        insideArg = true;
+        fieldPath.push(`[${node.name.value}]`);
         if (field?.args) {
           if (field.args[node.name.value]) {
             const vars = extractVariables(node);
@@ -206,8 +220,40 @@ export function cleanDocumentWithJTDMinMeta(
             return node;
           }
         }
+        insideArg = false;
+        fieldPath.pop();
         return null;
       },
+      leave: (node, key, parent, path, ancestors) => {
+        fieldPath.pop();
+        insideArg = false;
+        return undefined;
+      }
+
+    },
+    [Kind.OBJECT_FIELD]: {
+      enter: (node, key, parent, path, ancestors) => {
+        if (insideArg) {
+          fieldPath.push(node.name.value);
+          const isValid =
+            node.name.value.indexOf("__") === 0 ||
+            getFromJDTMinSchema(fieldPath, schema);
+          if (isValid) {
+            return node;
+          }
+          if (node.value.kind === Kind.VARIABLE) {
+            variableDefinitions[(node.value as VariableNode).name.value]--;
+          }
+          fieldPath.pop();
+          return null;
+        }
+      },
+      leave: (node, key, parent, path, ancestors) => {
+        if (insideArg) {
+          fieldPath.pop();
+        }
+        return undefined;
+      }
     },
     [Kind.FIELD]: {
       enter: (node, key, parent, path, ancestors) => {
