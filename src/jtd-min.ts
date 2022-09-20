@@ -304,6 +304,7 @@ export function cleanObject(obj: any, type: IJtdMin, schema: IJtdMinRoot) {
         if (prop) {
           return node;
         }
+        fieldPath.pop();
         return undefined;
       },
       leave: (node, key, parent, path, ancestors) => {

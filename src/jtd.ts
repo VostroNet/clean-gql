@@ -298,6 +298,7 @@ export function cleanObject(obj: any, type: IJtd, schema: IJtdRoot) {
         if (isValid) {
           return node;
         }
+        fieldPath.pop();
         return undefined;
       },
       leave: (node, key, parent, path, ancestors) => {
