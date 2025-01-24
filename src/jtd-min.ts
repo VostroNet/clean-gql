@@ -7,7 +7,7 @@ import {
   TypeNode,
   VariableNode,
 } from "graphql";
-import { IJtdMin, IJtdMinRoot, JtdMinType } from "@vostro/jtd-types";
+import { IJtdMin, IJtdMinMetadata, IJtdMinRoot, JtdMinType } from "@azerothian/jtd-types";
 import { OKind, objVisit } from "@vostro/object-visit";
 import { extractVariables } from "./shared";
 
@@ -155,9 +155,14 @@ interface operation {
   variableTypes: { [key: string]: IJtdMin };
 }
 
-export function cleanDocumentWithJTDMinMeta(
+export interface IJtdMinCleanMetadata extends IJtdMinMetadata {
+  query?: string;
+  mutation?: string;
+}
+
+export function cleanDocumentWithJTDMinMeta<T extends IJtdMinCleanMetadata>(
   query: DocumentNode,
-  schema: IJtdMinRoot
+  schema: IJtdMinRoot<T>
 ) {
   let fieldPath = [] as string[];
   let insideArg = false;
@@ -173,9 +178,9 @@ export function cleanDocumentWithJTDMinMeta(
           });
         }
         if (def.operation === "query") {
-          fieldPath.push((schema.md as any).query);
+          fieldPath.push(schema.md?.query || "Query");
         } else {
-          fieldPath.push((schema.md as any).mutation);
+          fieldPath.push(schema.md?.mutation || "Mutation");
         }
       },
       leave: (def) => {
